@@ -1,0 +1,17 @@
+.env
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+
+dist/
+build/
+*.egg-info/
+src/diagram_gpt.egg-info/
+
+diagrams/
+
+Data Center to Network Room drawings 2021_Final draft 1.pdf
+NetworkSwitches_1772647968042 - Copy(in).csv
+NetworkSwitches_1772647968042.xlsx
+rpiboot_setup.exe

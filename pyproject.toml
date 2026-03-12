@@ -1,0 +1,42 @@
+[project]
+name = "diagram-gpt"
+version = "0.2.0"
+description = "Generate publication-ready diagrams from natural language"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "anthropic>=0.42.0",
+    "openai>=2.15.0",
+    "openpyxl>=3.1.5",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "python-multipart>=0.0.20",
+    "cairosvg>=2.7.0",
+    "pillow>=11.0.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2.2",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8.0",
+]
+
+[project.scripts]
+diagramgpt = "src.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["generate_network_diagram.py", "src/diagram_gpt.egg-info"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

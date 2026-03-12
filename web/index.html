@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DiagramGPT</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f5fd7'/%3E%3Cpath d='M18 20h28v8H26v8h18v8H18z' fill='white'/%3E%3C/svg%3E">
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+    :root {
+      --page: #f5f0e6;
+      --panel: rgba(255,255,255,0.82);
+      --panel-strong: rgba(255,255,255,0.94);
+      --ink: #19253a;
+      --muted: #64748b;
+      --line: #d7dde7;
+      --accent: #0f5fd7;
+      --accent-strong: #0c428f;
+      --success: #0f766e;
+      --danger: #c2410c;
+      --radius: 22px;
+      --shadow: 0 18px 40px rgba(25,37,58,0.12);
+      --body: "IBM Plex Sans", "Segoe UI", sans-serif;
+      --mono: "IBM Plex Mono", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--body);
+      background:
+        radial-gradient(circle at top left, rgba(15,95,215,0.1), transparent 26rem),
+        radial-gradient(circle at bottom right, rgba(245,158,11,0.1), transparent 24rem),
+        linear-gradient(160deg, #ede6da 0%, #f8f5ee 50%, #f5f0e6 100%);
+    }
+    .app {
+      width: min(1360px, calc(100vw - 1.2rem));
+      margin: 0.6rem auto;
+      border-radius: 28px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.58);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(25,37,58,0.08);
+    }
+    .hero, .panel { padding: 1.2rem; }
+    .hero {
+      display: grid;
+      gap: 0.9rem;
+      border-bottom: 1px solid rgba(25,37,58,0.08);
+      background: linear-gradient(135deg, rgba(255,255,255,0.86), rgba(255,255,255,0.62));
+    }
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: start;
+    }
+    .tag, .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.38rem 0.72rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      border: 1px solid rgba(25,37,58,0.08);
+      background: rgba(255,255,255,0.88);
+    }
+    .tag {
+      color: var(--accent-strong);
+      background: rgba(15,95,215,0.1);
+      font-family: var(--mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .pill.ready { color: var(--success); }
+    .pill.warn { color: var(--danger); }
+    h1 {
+      margin: 0.6rem 0 0.25rem;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 0.95;
+      letter-spacing: -0.05em;
+    }
+    .subhead, .muted {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .runtime {
+      min-width: 280px;
+      padding: 1rem;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(25,37,58,0.08);
+    }
+    .runtime h2 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+    .capabilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 420px minmax(0, 1fr);
+      min-height: 760px;
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      border-right: 1px solid rgba(25,37,58,0.08);
+      background: rgba(255,255,255,0.4);
+    }
+    .card {
+      padding: 1rem;
+      border-radius: var(--radius);
+      background: var(--panel);
+      border: 1px solid rgba(25,37,58,0.08);
+    }
+    label {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .field-label {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    textarea, select, button {
+      font: inherit;
+    }
+    textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.92);
+      color: var(--ink);
+    }
+    textarea {
+      min-height: 160px;
+      resize: vertical;
+      padding: 1rem;
+      line-height: 1.5;
+    }
+    select {
+      padding: 0.78rem 0.88rem;
+    }
+    textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15,95,215,0.14);
+    }
+    .row, .actions {
+      display: grid;
+      gap: 0.7rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .examples, .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .upload-list {
+      display: grid;
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+    .upload-item {
+      padding: 0.7rem 0.8rem;
+      border-radius: 14px;
+      background: rgba(25,37,58,0.05);
+      border: 1px solid rgba(25,37,58,0.06);
+    }
+    .examples button, .secondary, .copy {
+      border: none;
+      cursor: pointer;
+      border-radius: 14px;
+      padding: 0.72rem 0.78rem;
+      background: rgba(15,95,215,0.08);
+      color: var(--accent-strong);
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+    .generate {
+      width: 100%;
+      border: none;
+      cursor: pointer;
+      padding: 0.96rem 1rem;
+      border-radius: 18px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #1b79ff);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .generate:disabled, .secondary:disabled, .copy:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .status {
+      min-height: 1.3rem;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--success); }
+    .workspace {
+      display: grid;
+      gap: 1rem;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.08)),
+        repeating-linear-gradient(0deg, rgba(25,37,58,0.03), rgba(25,37,58,0.03) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(25,37,58,0.03), rgba(25,37,58,0.03) 1px, transparent 1px, transparent 28px);
+    }
+    .workspace-card {
+      overflow: hidden;
+      border-radius: 26px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid rgba(25,37,58,0.08);
+    }
+    .workspace-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem 1.15rem;
+      border-bottom: 1px solid rgba(25,37,58,0.08);
+      background: rgba(255,255,255,0.82);
+    }
+    .workspace-head h2 { margin: 0; font-size: 1rem; }
+    .workspace-head p { margin: 0.16rem 0 0; color: var(--muted); font-size: 0.84rem; }
+    .preview {
+      min-height: 450px;
+      padding: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+    .preview svg, .preview img { max-width: 100%; max-height: 100%; }
+    .empty { max-width: 28rem; text-align: center; }
+    .empty h3 { margin: 0 0 0.4rem; font-size: 1.5rem; }
+    .empty p { margin: 0; color: var(--muted); line-height: 1.55; }
+    pre {
+      margin: 0;
+      padding: 1rem 1.15rem 1.25rem;
+      max-height: 280px;
+      overflow: auto;
+      background: rgba(248,250,252,0.92);
+      color: #123155;
+      font: 0.84rem/1.55 var(--mono);
+    }
+    .footnote {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid rgba(25,37,58,0.08); }
+    }
+    @media (max-width: 740px) {
+      .app { width: calc(100vw - 0.4rem); margin: 0.2rem auto; border-radius: 20px; }
+      .hero-top, .row, .examples, .actions { grid-template-columns: 1fr; display: grid; }
+      .hero, .panel { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <span class="tag">DiagramGPT Studio</span>
+          <h1>Prompt it. Validate it. Export it.</h1>
+          <p class="subhead">Generate diagrams from plain English and see provider or renderer issues before you waste a run.</p>
+        </div>
+        <aside class="runtime" aria-live="polite">
+          <p class="muted" style="font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em;">Runtime</p>
+          <h2 id="runtimeTitle">Checking local capabilities...</h2>
+          <p class="muted" id="runtimeCopy">DiagramGPT is loading provider and renderer status.</p>
+        </aside>
+      </div>
+      <div class="capabilities" id="capabilities"></div>
+    </header>
+    <main class="layout">
+      <section class="sidebar panel">
+        <div class="card">
+          <h2 style="margin:0 0 0.35rem;">Describe the diagram</h2>
+          <p class="muted">Mention the system parts, groups, or sequence you want the reader to understand.</p>
+        </div>
+        <div class="card">
+          <label for="description">Prompt</label>
+          <textarea id="description" placeholder="Example: user logs in through a web app, the API checks a session store, then reads account data from Postgres and returns the dashboard."></textarea>
+          <div style="display:flex; justify-content:space-between; gap:0.7rem; margin-top:0.5rem;" class="muted">
+            <span>Ctrl/Cmd + Enter generates</span>
+            <span id="charCount">0 chars</span>
+          </div>
+        </div>
+        <div class="card">
+          <p class="field-label">Starter prompts</p>
+          <div class="examples">
+            <button type="button" data-example="user signup flow with email verification, welcome email, and failed retry path">Signup flow</button>
+            <button type="button" data-example="event-driven order processing architecture with checkout API, queue, worker, inventory service, and notification service">Architecture</button>
+            <button type="button" data-example="network topology with headquarters firewall, two VLANs, branch office VPN, and core switch">Network</button>
+          </div>
+        </div>
+        <div class="card">
+          <label for="dataFiles">Data files</label>
+          <input id="dataFiles" type="file" multiple accept=".csv,.json,.xlsx,.txt,.md">
+          <p class="muted" style="margin-top:0.55rem;">Attach CSV, JSON, XLSX, TXT, or Markdown files to ground the diagram or chart.</p>
+          <div class="upload-list" id="uploadList">
+            <div class="upload-item">No data files attached.</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <div>
+              <label for="type">Diagram Type</label>
+              <select id="type"></select>
+            </div>
+            <div>
+              <label for="format">Output Format</label>
+              <select id="format">
+                <option value="mermaid">Mermaid</option>
+                <option value="d2">D2</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:0.75rem;">
+            <div>
+              <label for="style">Style</label>
+              <select id="style"></select>
+            </div>
+            <div>
+              <label for="font">Font</label>
+              <select id="font"></select>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="generate" id="generateBtn">Generate Diagram</button>
+        <div class="status" id="status" aria-live="polite"></div>
+        <div class="actions">
+          <button type="button" class="secondary" id="exportSvg" disabled>Export SVG</button>
+          <button type="button" class="secondary" id="exportPng" disabled>Export PNG</button>
+          <button type="button" class="secondary" id="exportCode" disabled>Export Code</button>
+        </div>
+      </section>
+      <section class="workspace panel">
+        <article class="workspace-card">
+          <div class="workspace-head">
+            <div>
+              <h2>Preview</h2>
+              <p id="previewMeta">Waiting for your first generation.</p>
+            </div>
+          </div>
+          <div class="preview" id="preview"></div>
+        </article>
+        <article class="workspace-card">
+          <div class="workspace-head">
+            <div>
+              <h2>Source</h2>
+              <p id="codeLabel">No diagram source generated yet.</p>
+            </div>
+            <button type="button" class="copy" id="copyBtn" disabled>Copy Code</button>
+          </div>
+          <pre><code id="codeOutput">Generate a diagram to inspect the Mermaid or D2 source.</code></pre>
+        </article>
+        <p class="footnote" id="footerNote">Runtime details will appear here once the API responds.</p>
+      </section>
+    </main>
+  </div>
+  <script>
+    const state = { runtime: null, result: null, dataContext: "", uploads: [] };
+    const $ = (id) => document.getElementById(id);
+
+    function setSafeHTML(target, html) {
+      const clean = DOMPurify.sanitize(html, { USE_PROFILES: { svg: true, svgFilters: true }, ADD_TAGS: ["foreignObject"] });
+      target.textContent = "";
+      const template = document.createElement("template");
+      template.innerHTML = clean;
+      target.appendChild(template.content);
+    }
+
+    function setStatus(message, kind = "") {
+      $("status").textContent = message;
+      $("status").className = kind ? `status ${kind}` : "status";
+    }
+
+    function setEmpty(title, copy) {
+      $("preview").innerHTML = `<div class="empty"><h3>${title}</h3><p>${copy}</p></div>`;
+    }
+
+    function fillSelect(select, values, includeAuto = false) {
+      const current = select.value;
+      select.textContent = "";
+      if (includeAuto) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Auto-detect";
+        select.appendChild(option);
+      }
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+      if (values.includes(current)) {
+        select.value = current;
+      }
+    }
+
+    function updateCount() {
+      const max = state.runtime?.limits?.max_description_length || 4000;
+      $("charCount").textContent = `${$("description").value.length}/${max} chars`;
+    }
+
+    function renderCapability(label, ok) {
+      const pill = document.createElement("span");
+      pill.className = `pill ${ok ? "ready" : "warn"}`;
+      pill.textContent = label;
+      return pill;
+    }
+
+    function applyRuntime(runtime) {
+      state.runtime = runtime;
+      fillSelect($("type"), runtime.types.filter((value) => value !== "custom"), true);
+      fillSelect($("style"), runtime.styles);
+      fillSelect($("font"), runtime.fonts);
+      $("style").value = runtime.defaults.style;
+      $("font").value = runtime.defaults.font;
+
+      const d2 = $("format").querySelector('option[value="d2"]');
+      d2.disabled = !runtime.renderers.d2.available;
+      if (!runtime.renderers.d2.available) {
+        $("format").value = "mermaid";
+      }
+
+      $("runtimeTitle").textContent = runtime.ready ? `Ready on port ${runtime.defaults.port}` : "Runtime needs attention";
+      $("runtimeCopy").textContent = runtime.ready
+        ? "At least one provider and one renderer are available."
+        : runtime.llm.error || "A provider key or renderer is missing. Run `python -m src.cli doctor` for details.";
+      $("footerNote").textContent = runtime.ready
+        ? `Available formats: ${runtime.available_formats.join(", ")}. Serving from ${location.origin}.`
+        : "The UI stays usable even when a provider or renderer is missing, but generation will surface the exact blocker.";
+
+      const capabilities = $("capabilities");
+      capabilities.textContent = "";
+      capabilities.append(
+        renderCapability(runtime.ready ? "Ready for generation" : "Needs setup", runtime.ready),
+        renderCapability(`Provider: ${runtime.llm.resolved_provider || runtime.llm.configured_provider}`, runtime.llm.ready),
+        renderCapability(`Mermaid: ${runtime.renderers.mermaid.available ? "available" : "missing"}`, runtime.renderers.mermaid.available),
+        renderCapability(`D2: ${runtime.renderers.d2.available ? "available" : "missing"}`, runtime.renderers.d2.available),
+        renderCapability(`PNG export: ${runtime.renderers.png_export.available ? "available" : "missing"}`, runtime.renderers.png_export.available),
+      );
+      updateCount();
+    }
+
+    function renderUploads() {
+      const uploadList = $("uploadList");
+      uploadList.textContent = "";
+      if (!state.uploads.length) {
+        uploadList.innerHTML = '<div class="upload-item">No data files attached.</div>';
+        return;
+      }
+
+      state.uploads.forEach((item) => {
+        const node = document.createElement("div");
+        node.className = "upload-item";
+        node.innerHTML = `<strong>${item.filename}</strong><br>${item.file_type.toUpperCase()} | Suggested: ${item.suggested_diagram_types.join(", ")}`;
+        uploadList.appendChild(node);
+      });
+    }
+
+    async function loadRuntime() {
+      try {
+        const response = await fetch("/api/status");
+        if (!response.ok) {
+          throw new Error(`Runtime status failed with HTTP ${response.status}`);
+        }
+        applyRuntime(await response.json());
+      } catch (error) {
+        $("runtimeTitle").textContent = "Cannot reach DiagramGPT";
+        $("runtimeCopy").textContent = "Start the API with `python -m src.cli serve`, then reload this page.";
+        $("footerNote").textContent = error.message;
+        setStatus("The UI could not load runtime status from the API.", "error");
+      }
+    }
+
+    async function uploadFiles() {
+      const input = $("dataFiles");
+      if (!input.files.length) {
+        state.dataContext = "";
+        state.uploads = [];
+        renderUploads();
+        return;
+      }
+
+      const formData = new FormData();
+      Array.from(input.files).forEach((file) => formData.append("files", file));
+      setStatus("Uploading data files...");
+
+      try {
+        const response = await fetch("/api/context/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.detail || `Upload failed with HTTP ${response.status}`);
+        }
+
+        state.dataContext = payload.combined_context;
+        state.uploads = payload.files;
+        renderUploads();
+
+        if (!$("type").value && payload.suggested_diagram_types.includes("chart")) {
+          setStatus("Data uploaded. Chart input detected; leave type on auto-detect or choose chart.", "success");
+        } else {
+          setStatus("Data files attached successfully.", "success");
+        }
+      } catch (error) {
+        input.value = "";
+        state.dataContext = "";
+        state.uploads = [];
+        renderUploads();
+        setStatus(error.message, "error");
+      }
+    }
+
+    async function generate() {
+      const description = $("description").value.trim();
+      if (!description) {
+        setStatus("Add a prompt before generating.", "error");
+        $("description").focus();
+        return;
+      }
+      $("generateBtn").disabled = true;
+      $("generateBtn").textContent = "Generating...";
+      setStatus("Generating diagram...");
+
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description,
+            diagram_type: $("type").value || null,
+            data_context: state.dataContext,
+            style: $("style").value,
+            font: $("font").value,
+            output_format: $("format").value,
+          }),
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.detail || `Generation failed with HTTP ${response.status}`);
+        }
+
+        state.result = payload;
+        $("codeOutput").textContent = payload.source_code;
+        $("codeLabel").textContent = `${payload.output_format.toUpperCase()} | ${payload.diagram_type}`;
+        $("previewMeta").textContent = `Generated as ${payload.diagram_type} using ${payload.output_format}.`;
+        $("copyBtn").disabled = false;
+        $("exportCode").disabled = false;
+
+        if (payload.svg) {
+          setSafeHTML($("preview"), payload.svg);
+          $("exportSvg").disabled = false;
+          $("exportPng").disabled = false;
+          setStatus(`Generated ${payload.diagram_type} diagram successfully.`, "success");
+        } else {
+          setEmpty("Source generated, render unavailable", payload.error || "DiagramGPT returned source code but could not render SVG.");
+          $("exportSvg").disabled = true;
+          $("exportPng").disabled = true;
+          setStatus(payload.error || "Render failed after generation.", "error");
+        }
+      } catch (error) {
+        state.result = null;
+        $("codeOutput").textContent = "No source available because generation failed.";
+        $("codeLabel").textContent = "Generation failed";
+        $("copyBtn").disabled = true;
+        $("exportCode").disabled = true;
+        $("exportSvg").disabled = true;
+        $("exportPng").disabled = true;
+        setEmpty("Diagram generation failed", error.message);
+        setStatus(error.message, "error");
+      } finally {
+        $("generateBtn").disabled = false;
+        $("generateBtn").textContent = "Generate Diagram";
+      }
+    }
+
+    async function copyCode() {
+      if (!state.result) return;
+      try {
+        await navigator.clipboard.writeText(state.result.source_code);
+        $("copyBtn").textContent = "Copied";
+        setTimeout(() => { $("copyBtn").textContent = "Copy Code"; }, 1400);
+      } catch {
+        setStatus("Clipboard access failed. Select the code manually instead.", "error");
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportCode() {
+      if (!state.result) return;
+      const ext = state.result.output_format === "mermaid" ? "mmd" : "d2";
+      downloadBlob(new Blob([state.result.source_code], { type: "text/plain" }), `diagram.${ext}`);
+    }
+
+    function exportSvg() {
+      if (!state.result?.svg) return;
+      downloadBlob(new Blob([state.result.svg], { type: "image/svg+xml" }), "diagram.svg");
+    }
+
+    async function exportPng() {
+      if (!state.result) return;
+      try {
+        const response = await fetch("/api/render/png", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: $("description").value.trim(),
+            diagram_type: $("type").value || null,
+            data_context: state.dataContext,
+            style: $("style").value,
+            font: $("font").value,
+            output_format: $("format").value,
+          }),
+        });
+        if (!response.ok) {
+          const payload = await response.json();
+          throw new Error(payload.detail || `PNG export failed with HTTP ${response.status}`);
+        }
+        downloadBlob(await response.blob(), "diagram.png");
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    }
+
+    document.querySelectorAll("[data-example]").forEach((button) => {
+      button.addEventListener("click", () => {
+        $("description").value = button.dataset.example;
+        updateCount();
+        $("description").focus();
+      });
+    });
+    $("description").addEventListener("input", updateCount);
+    $("dataFiles").addEventListener("change", uploadFiles);
+    $("description").addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        generate();
+      }
+    });
+    $("generateBtn").addEventListener("click", generate);
+    $("copyBtn").addEventListener("click", copyCode);
+    $("exportCode").addEventListener("click", exportCode);
+    $("exportSvg").addEventListener("click", exportSvg);
+    $("exportPng").addEventListener("click", exportPng);
+
+    setEmpty("Run a prompt to see the diagram", "DiagramGPT will render the SVG here and keep the source code below for inspection.");
+    renderUploads();
+    loadRuntime();
+  </script>
+</body>
+</html>
