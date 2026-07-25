@@ -14,8 +14,22 @@ build/
 src/diagram_gpt.egg-info/
 
 diagrams/
+.llmcontext/
 
 Data Center to Network Room drawings 2021_Final draft 1.pdf
 NetworkSwitches_1772647968042 - Copy(in).csv
 NetworkSwitches_1772647968042.xlsx
 rpiboot_setup.exe
+
+# Private working material: agent instructions, planning docs, session notes.
+# These are working files, not documentation anyone else should have to read.
+CLAUDE.md
+AGENTS.md
+codex.md
+HANDOFF.md
+.claude/
+.codex/
+.agents/
+notes/
+todos/
+docs/superpowers/
